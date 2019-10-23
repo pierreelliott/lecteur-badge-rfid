@@ -97,9 +97,9 @@ void onReceive(int packetSize) {
 
 void readNetwork() {
   int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    Serial.println("============================");
-    Serial.println("Reading...");
+  if (packetSize == 7) {
+    //Serial.println("============================");
+    Serial.println("----------------------------");
 
     byte message[7];
     
@@ -122,11 +122,7 @@ void readNetwork() {
       return;
     }
 
-    Serial.print("Message received from " + String(sourceID, HEX));
-    Serial.print("Message: ");
-    printPacket(message);
-    Serial.println("");
-    Serial.println("============================");
+    Serial.println("Yay ! =)");
   }
 }
 
