@@ -5,7 +5,7 @@
 /* Adaptation pour MKr 1300 2019-04-01 Joseph Ciccarello */
 #define RST_PIN         6 //9          // Configurable, see typical pin layout above
 #define SS_PIN          7 //10         // Configurable, see typical pin layout above
-#define NET_CODE 0x5A
+#define NET_CODE 0x34
 #define EMITTER_CODE 0x1A
 
 #include <SPI.h>
@@ -14,7 +14,6 @@
 #include <MFRC522.h>
 
 MFRC522 mfrc522(SS_PIN, RST_PIN);  // Create MFRC522 instance
-
 
 const long freq = 868E6;
 int counter = 1;
@@ -66,7 +65,6 @@ void loop() {
 
   // TODO Lire la carte
   if(mfrc522.PICC_IsNewCardPresent()) {
-    Serial.println("Test 1");
     card_uid = getID();
     if(card_uid != -1){
       Serial.print("Card detected, UID: ");
@@ -86,43 +84,58 @@ void loop() {
   }
 
   //Serial.print("Check for packet  ");
-  int packetSize = LoRa.parsePacket();
-  if (packetSize) {
-    Serial.print("RX packet size =  ");
-    Serial.println(packetSize);
-    while (LoRa.available()) {
-      Serial.print((char)LoRa.read());
-    }
-    // print RSSI of packet
-    Serial.print("' with RSSI ");
-    Serial.println(LoRa.packetRssi());
-    LoRa.endPacket();
+  readNetwork();
+}
+
+void onReceive(int packetSize) {
+  if(packetSize != 7) {
+    return; // Not a valid packet
   }
+
+  
 }
 
 void readNetwork() {
   int packetSize = LoRa.parsePacket();
   if (packetSize) {
-    byte net_code = LoRa.read();
-    if(net_code != 0x5A) {
+    Serial.println("============================");
+    Serial.println("Reading...");
+
+    byte message[7];
+    
+    byte sourceID = LoRa.read();
+    message[0] = sourceID;
+    byte destID = LoRa.read();
+    message[1] = destID;
+
+    int i = 2;
+    for(; i < packetSize; i++) {
+      message[i] = LoRa.read();
+    }
+
+    Serial.print("Received: ");
+    printPacket(message);
+    Serial.println(" (0x" + String(sourceID, HEX) + " => 0x" + String(destID, HEX) + ")");
+
+    if(destID != EMITTER_CODE) {
+      Serial.println("NOT FOR ME !");
       return;
     }
 
-    byte emitter = LoRa.read();
-    byte receiver = LoRa.read();
-
-    if(receiver != EMITTER_CODE) {
-      Serial.println("Message on network (not for me) received.");
-      return;
-    }
-
-    Serial.print("/!\ Message received from " + String(emitter, HEX));
+    Serial.print("Message received from " + String(sourceID, HEX));
     Serial.print("Message: ");
-    while (LoRa.available()) {
-      Serial.print(String(LoRa.read(), HEX));
-    }
+    printPacket(message);
     Serial.println("");
     Serial.println("============================");
+  }
+}
+
+void printPacket(byte* message) {
+  for(int i = 0; i < 7; i++) {
+    Serial.print(message[i], HEX);
+    if(i<6) {
+      Serial.print(":");
+    }
   }
 }
 
