@@ -155,7 +155,7 @@ void sendUID(unsigned long uid) {
   Serial.println("| End;");
   //LoRa.print(uid);
   LoRa.write(0x00); // Checksum
-  LoRa.endPacket();
+  LoRa.endPacket(true);
 
   digitalWrite(led, LOW);
 }
