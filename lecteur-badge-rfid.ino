@@ -5,8 +5,12 @@
 /* Adaptation pour MKr 1300 2019-04-01 Joseph Ciccarello */
 #define RST_PIN         6 //9          // Configurable, see typical pin layout above
 #define SS_PIN          7 //10         // Configurable, see typical pin layout above
+
+#define PACKET_SIZE 6
 #define NET_CODE 0x34
 #define EMITTER_CODE 0x1A
+#define STATION 0x00
+#define OPEN 0x01
 
 #include <SPI.h>
 
@@ -58,9 +62,7 @@ void setup()
 
 void loop() {
   static int count;
-  static unsigned long time = millis();
   static unsigned long card_uid;
-  count ++;
   static boolean sending = false;
 
   // TODO Lire la carte
@@ -69,7 +71,7 @@ void loop() {
     if(card_uid != -1){
       Serial.print("Card detected, UID: ");
       Serial.println(card_uid);
-      mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
+      //mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
       sending = true;
     }
   }
@@ -79,7 +81,6 @@ void loop() {
   if (sending) {    
     sendUID(card_uid);
     counter++;
-    time = millis();
     sending = false;
   }
 
@@ -97,11 +98,8 @@ void onReceive(int packetSize) {
 
 void readNetwork() {
   int packetSize = LoRa.parsePacket();
-  if (packetSize == 7) {
-    //Serial.println("============================");
-    Serial.println("----------------------------");
-
-    byte message[7];
+  if (packetSize == PACKET_SIZE) {
+    byte message[PACKET_SIZE];
     
     byte sourceID = LoRa.read();
     message[0] = sourceID;
@@ -109,9 +107,10 @@ void readNetwork() {
     message[1] = destID;
 
     int i = 2;
-    for(; i < packetSize; i++) {
-      message[i] = LoRa.read();
-    }
+    message[2] = LoRa.read();
+    message[3] = LoRa.read();
+    message[4] = LoRa.read();
+    message[5] = LoRa.read();
 
     Serial.print("Received: ");
     printPacket(message);
@@ -122,39 +121,55 @@ void readNetwork() {
       return;
     }
 
-    Serial.println("Yay ! =)");
-  }
-}
-
-void printPacket(byte* message) {
-  for(int i = 0; i < 7; i++) {
-    Serial.print(message[i], HEX);
-    if(i<6) {
-      Serial.print(":");
+    if(message[PACKET_SIZE-1] == OPEN) {
+      Serial.println("Yay ! =)");
+      beep();
+    } else {
+      unauthorized();
     }
   }
 }
 
+void unauthorized() {
+  for(int i = 0; i < 3; i++) {
+    beep();
+    delay(50);
+  }
+}
+
+void printPacket(byte* message) {
+  String text = String(message[0], HEX) + ":" + String(message[1], HEX) + ":" + String(message[2], HEX) + ":" + String(message[3], HEX) + ":" + String(message[4], HEX) + ":" + String(message[5], HEX) + ":" + String(message[6], HEX);
+  Serial.print(text);
+}
+
+void beep() {
+  digitalWrite(led, HIGH);
+  delay(100);
+  digitalWrite(led, LOW);
+}
+
 void sendUID(unsigned long uid) {
   digitalWrite(led, HIGH);
-  Serial.print("Sending packet: ");
-  Serial.println(counter);
+  Serial.println("Sending packet: " + String(counter));
   Serial.print("Sending UID : ");
+  String textUID = "";
     
   //LoRa.send packet
   LoRa.beginPacket();
   //LoRa.print("Msg N° : ");
   //LoRa.print(counter);
   LoRa.write(EMITTER_CODE); // Emitter
-  LoRa.write(0x00); // Receiver
+  LoRa.write(STATION); // Receiver
   // In Data, we put the 4 bytes UID of the card
-  for(unsigned int i = 0; i < 4; i++) {
-    LoRa.write(mfrc522.uid.uidByte[i]);
-    Serial.print(String(mfrc522.uid.uidByte[i], HEX) + " ");
-  }
-  Serial.println("| End;");
-  //LoRa.print(uid);
-  LoRa.write(0x00); // Checksum
+  LoRa.write(mfrc522.uid.uidByte[0]);
+  LoRa.write(mfrc522.uid.uidByte[1]);
+  LoRa.write(mfrc522.uid.uidByte[2]);
+  LoRa.write(mfrc522.uid.uidByte[3]);
+
+  textUID = String(mfrc522.uid.uidByte[0], HEX) + ":" + String(mfrc522.uid.uidByte[1], HEX) + ":" + String(mfrc522.uid.uidByte[2], HEX) + ":" + String(mfrc522.uid.uidByte[3], HEX) + ";";
+  Serial.println(textUID);
+  
+  //LoRa.write(0x00); // Checksum
   LoRa.endPacket(true);
 
   digitalWrite(led, LOW);
