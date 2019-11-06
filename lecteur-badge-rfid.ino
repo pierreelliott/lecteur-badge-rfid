@@ -98,7 +98,7 @@ void onReceive(int packetSize) {
 
 void readNetwork() {
   int packetSize = LoRa.parsePacket();
-  if (packetSize == PACKET_SIZE) {
+  if (packetSize > 0) {
     byte message[PACKET_SIZE];
     
     byte sourceID = LoRa.read();
@@ -112,7 +112,7 @@ void readNetwork() {
     message[4] = LoRa.read();
     message[5] = LoRa.read();
 
-    Serial.print("Received: ");
+    Serial.print("Received: (" + String(packetSize) + ")");
     printPacket(message);
     Serial.println(" (0x" + String(sourceID, HEX) + " => 0x" + String(destID, HEX) + ")");
 
@@ -121,7 +121,12 @@ void readNetwork() {
       return;
     }
 
-    if(message[PACKET_SIZE-1] == OPEN) {
+    if(sourceID != STATION) {
+      Serial.println("NOT STATION !");
+      return;
+    }
+
+    if(message[5] == OPEN) {
       Serial.println("Yay ! =)");
       beep();
     } else {
@@ -138,7 +143,7 @@ void unauthorized() {
 }
 
 void printPacket(byte* message) {
-  String text = String(message[0], HEX) + ":" + String(message[1], HEX) + ":" + String(message[2], HEX) + ":" + String(message[3], HEX) + ":" + String(message[4], HEX) + ":" + String(message[5], HEX) + ":" + String(message[6], HEX);
+  String text = String(message[0], HEX) + ":" + String(message[1], HEX) + ":" + String(message[2], HEX) + ":" + String(message[3], HEX) + ":" + String(message[4], HEX) + ":" + String(message[5], HEX);
   Serial.print(text);
 }
 
@@ -170,7 +175,8 @@ void sendUID(unsigned long uid) {
   Serial.println(textUID);
   
   //LoRa.write(0x00); // Checksum
-  LoRa.endPacket(true);
+  LoRa.endPacket();
+  delay(50);
 
   digitalWrite(led, LOW);
 }
