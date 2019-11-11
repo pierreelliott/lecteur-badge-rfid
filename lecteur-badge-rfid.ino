@@ -40,6 +40,7 @@ void setup()
   LoRa.setSpreadingFactor(9);
   LoRa.setSyncWord(NET_CODE);
   LoRa.setCodingRate4(5);
+  LoRa.enableCrc();
   LoRa.setPreambleLength(65535);
   LoRa.begin(freq);
   Serial.println("LoRa Sender");
