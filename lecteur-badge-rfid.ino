@@ -62,23 +62,18 @@ void setup()
 
 
 void loop() {
-  static int count;
   static unsigned long card_uid;
   static boolean sending = false;
 
-  // TODO Lire la carte
   if(mfrc522.PICC_IsNewCardPresent()) {
     card_uid = getID();
     if(card_uid != -1){
-      Serial.print("Card detected, UID: ");
-      Serial.println(card_uid);
+      Serial.print("Card detected, UID: " + String(card_uid));
       //mfrc522.PICC_DumpDetailsToSerial(&(mfrc522.uid));
       sending = true;
     }
   }
   
-  // Tous les 1000 passages ...
-  // Todo : Utiliser le temps sytème pour plus de précision
   if (sending) {    
     sendUID(card_uid);
     counter++;
